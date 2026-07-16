@@ -1,19 +1,12 @@
 FROM python:3.13.14-slim
-
-RUN pip install pandas pyarrow
-
-# Copy uv binary from official uv image (multi-stage build pattern)
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/
 
-# Set working directory
-WORKDIR /app
+WORKDIR /code
+ENV PATH="/code/.venv/bin:$PATH"
 
-# Add virtual environment to PATH so we can use installed packages
-ENV PATH="/app/.venv/bin:$PATH"
+COPY pyproject.toml .python-version uv.lock ./
+RUN uv sync --locked
 
-# Copy dependency files first (better layer caching)
-COPY "pyproject.toml" "uv.lock" ".python-version" ./
-# Install dependencies from lock file (ensures reproducible builds)
-RUN uv sync --locked 
-COPY pipeline.py pipeline.py
-ENTRYPOINT [ "python", "pipeline.py"]
+COPY ingest_data.py .
+
+ENTRYPOINT ["uv", "run", "python", "ingest_data.py"]
